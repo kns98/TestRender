@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -6,14 +6,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+// Define the namespace for the Ray Tracer GUI application
 namespace RayTracerGUI
 {
+    // Define a structure to represent a 3D vector
     public struct Vector3f
     {
+        // Properties for the X, Y, and Z components of the vector
         public double X { get; }
         public double Y { get; }
         public double Z { get; }
 
+        // Constructor to initialize the vector components
         public Vector3f(double x, double y, double z)
         {
             X = x;
@@ -21,10 +25,12 @@ namespace RayTracerGUI
             Z = z;
         }
 
+        // Indexer to access vector components by index
         public double this[int index]
         {
             get
             {
+                // Return the component based on the index provided
                 return index switch
                 {
                     0 => X,
@@ -35,33 +41,42 @@ namespace RayTracerGUI
             }
         }
 
+        // Define some static properties for common vectors
         public static Vector3f Zero => new Vector3f(0, 0, 0);
         public static Vector3f OneX => new Vector3f(1, 0, 0);
         public static Vector3f OneY => new Vector3f(0, 1, 0);
         public static Vector3f OneZ => new Vector3f(0, 0, 1);
 
+        // Overload operators for vector arithmetic
         public static Vector3f operator -(Vector3f a) => new Vector3f(-a.X, -a.Y, -a.Z);
         public static Vector3f operator -(Vector3f a, Vector3f b) => new Vector3f(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
         public static Vector3f operator +(Vector3f a, Vector3f b) => new Vector3f(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
         public static Vector3f operator *(Vector3f a, double scalar) => new Vector3f(a.X * scalar, a.Y * scalar, a.Z * scalar);
         public static Vector3f operator /(Vector3f a, double scalar) => new Vector3f(a.X / scalar, a.Y / scalar, a.Z / scalar);
 
+        // Calculate the dot product of two vectors
         public static double Dot(Vector3f a, Vector3f b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+
+        // Calculate the cross product of two vectors
         public static Vector3f Cross(Vector3f a, Vector3f b) => new Vector3f(a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X);
 
+        // Normalize a vector to have a length of 1
         public static Vector3f Unitize(Vector3f vector)
         {
             double length = Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y + vector.Z * vector.Z);
             return vector / length;
         }
 
+        // Calculate the length (magnitude) of the vector
         public double Length() => Math.Sqrt(X * X + Y * Y + Z * Z);
 
+        // Reflect a vector around a normal vector
         public static Vector3f Reflect(Vector3f incident, Vector3f normal)
         {
             return incident - normal * 2 * Dot(incident, normal);
         }
 
+        // Refract a vector based on a normal and a refractive index
         public static Vector3f Refract(Vector3f incident, Vector3f normal, double eta)
         {
             double cosi = -Math.Max(-1.0, Math.Min(1.0, Dot(incident, normal)));
@@ -74,8 +89,10 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class to represent material properties
     public class Material
     {
+        // Properties for color, reflectivity, emissivity, transparency, refractive index, and texture
         public Vector3f Color { get; set; }
         public double Reflectivity { get; set; }
         public double Emissivity { get; set; }
@@ -83,6 +100,7 @@ namespace RayTracerGUI
         public double RefractiveIndex { get; set; }
         public Texture Texture { get; set; }
 
+        // Constructor to initialize material properties
         public Material(Vector3f color, double reflectivity, double emissivity, double transparency = 0.0, double refractiveIndex = 1.0, Texture texture = null)
         {
             Color = color;
@@ -93,18 +111,22 @@ namespace RayTracerGUI
             Texture = texture;
         }
 
+        // Get the color of the material, considering texture if available
         public Vector3f GetColor(double u, double v)
         {
             return Texture != null ? Texture.GetColor(u, v) : Color;
         }
     }
 
+    // Define a class for textures
     public class Texture
     {
+        // Array to store pixel colors
         private readonly Vector3f[,] pixels;
         public int Width { get; }
         public int Height { get; }
 
+        // Constructor to load texture from a file
         public Texture(string filename)
         {
             using (StreamReader reader = new StreamReader(filename))
@@ -129,6 +151,7 @@ namespace RayTracerGUI
             }
         }
 
+        // Get the color at specified texture coordinates
         public Vector3f GetColor(double u, double v)
         {
             int i = (int)((u * Width) % Width);
@@ -137,17 +160,20 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class to represent a ray in 3D space
     public class Ray
     {
         public Vector3f Origin { get; }
         public Vector3f Direction { get; }
 
+        // Constructor to initialize ray origin and direction
         public Ray(Vector3f origin, Vector3f direction)
         {
             Origin = origin;
             Direction = Vector3f.Unitize(direction);
         }
 
+        // Check if the ray intersects with a triangle
         public bool Intersects(Triangle triangle, out double distance)
         {
             const double EPSILON = 0.0000001;
@@ -197,6 +223,7 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class to represent a triangle in 3D space
     public class Triangle
     {
         public Vector3f Vertex0 { get; }
@@ -207,6 +234,7 @@ namespace RayTracerGUI
         private readonly Vector3f uv1;
         private readonly Vector3f uv2;
 
+        // Constructor to initialize triangle vertices, material, and UV coordinates
         public Triangle(Vector3f vertex0, Vector3f vertex1, Vector3f vertex2, Material material, Vector3f uv0, Vector3f uv1, Vector3f uv2)
         {
             Vertex0 = vertex0;
@@ -218,16 +246,19 @@ namespace RayTracerGUI
             this.uv2 = uv2;
         }
 
+        // Get the material of the triangle
         public Material GetMaterial()
         {
             return material;
         }
 
+        // Calculate the normal vector of the triangle
         public Vector3f Normal()
         {
             return Vector3f.Unitize(Vector3f.Cross(Vertex1 - Vertex0, Vertex2 - Vertex0));
         }
 
+        // Get the bounding box of the triangle
         public BoundingBox GetBoundingBox()
         {
             Vector3f small = new Vector3f(
@@ -245,6 +276,7 @@ namespace RayTracerGUI
             return new BoundingBox(small, big);
         }
 
+        // Check if a ray intersects with the triangle, and get intersection details
         public bool Intersect(Ray ray, out double distance, out double u, out double v)
         {
             if (ray.Intersects(this, out distance))
@@ -261,11 +293,13 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class for a light source
     public class Light
     {
         public Vector3f Position { get; set; }
         public Vector3f Color { get; set; }
 
+        // Constructor to initialize light position and color
         public Light(Vector3f position, Vector3f color)
         {
             Position = position;
@@ -273,38 +307,47 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class to represent the scene
     public class Scene
     {
         private readonly List<Triangle> triangles;
         private readonly List<Light> lights;
         private BVHNode bvhRoot;
 
+        // Constructor to initialize the scene
         public Scene()
         {
             triangles = new List<Triangle>();
             lights = new List<Light>();
         }
 
+        // Add a triangle to the scene and update the BVH tree
         public void AddTriangle(Triangle triangle)
         {
             triangles.Add(triangle);
             bvhRoot = new BVHNode(triangles, 0, triangles.Count);
         }
 
+        // Add a light to the scene
         public void AddLight(Light light)
         {
             lights.Add(light);
         }
 
+        // Get all triangles in the scene
         public IEnumerable<Triangle> GetTriangles() => triangles;
+
+        // Get all lights in the scene
         public IEnumerable<Light> GetLights() => lights;
 
+        // Check if a ray intersects with any triangle in the scene
         public bool Intersect(Ray ray, out Triangle hitTriangle, out double hitDistance)
         {
             return bvhRoot.Intersect(ray, 0, double.MaxValue, out hitTriangle, out hitDistance);
         }
     }
 
+    // Define a class for a bounding volume hierarchy (BVH) node
     public class BVHNode
     {
         public BVHNode Left { get; private set; }
@@ -312,6 +355,7 @@ namespace RayTracerGUI
         public BoundingBox Box { get; private set; }
         public Triangle Triangle { get; private set; }
 
+        // Constructor to create a BVH node from a list of triangles
         public BVHNode(List<Triangle> triangles, int start, int end)
         {
             var objects = new List<Triangle>(triangles);
@@ -339,6 +383,7 @@ namespace RayTracerGUI
             Box = BoundingBox.SurroundingBox(Left.Box, Right.Box);
         }
 
+        // Determine the best axis to split the BVH node
         private int GetBestAxisToSplit(List<Triangle> triangles, int start, int end)
         {
             int bestAxis = 0;
@@ -366,12 +411,14 @@ namespace RayTracerGUI
             return bestAxis;
         }
 
+        // Constructor to create a leaf BVH node for a single triangle
         private BVHNode(Triangle triangle)
         {
             Triangle = triangle;
             Box = triangle.GetBoundingBox();
         }
 
+        // Check if a ray intersects with the BVH node
         public bool Intersect(Ray ray, double tMin, double tMax, out Triangle hitTriangle, out double hitDistance)
         {
             hitTriangle = null;
@@ -415,17 +462,20 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class for a bounding box
     public class BoundingBox
     {
         public Vector3f Min { get; private set; }
         public Vector3f Max { get; private set; }
 
+        // Constructor to initialize the bounding box
         public BoundingBox(Vector3f min, Vector3f max)
         {
             Min = min;
             Max = max;
         }
 
+        // Create a bounding box that surrounds two other bounding boxes
         public static BoundingBox SurroundingBox(BoundingBox box0, BoundingBox box1)
         {
             Vector3f small = new Vector3f(Math.Min(box0.Min.X, box1.Min.X),
@@ -439,6 +489,7 @@ namespace RayTracerGUI
             return new BoundingBox(small, big);
         }
 
+        // Check if a ray intersects with the bounding box
         public bool Intersects(Ray ray, double tMin, double tMax)
         {
             for (int a = 0; a < 3; a++)
@@ -463,6 +514,7 @@ namespace RayTracerGUI
             return true;
         }
 
+        // Calculate the surface area of the bounding box
         public double GetSurfaceArea()
         {
             Vector3f diff = Max - Min;
@@ -470,12 +522,14 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class for the ray tracer
     public class RayTracer
     {
         private readonly Scene scene;
         private readonly int maxDepth;
         private readonly int samplesPerPixel;
 
+        // Constructor to initialize the ray tracer with a scene, max depth, and samples per pixel
         public RayTracer(Scene scene, int maxDepth = 5, int samplesPerPixel = 100)
         {
             this.scene = scene;
@@ -483,6 +537,7 @@ namespace RayTracerGUI
             this.samplesPerPixel = samplesPerPixel;
         }
 
+        // Calculate the radiance at a given position and direction
         public Vector3f Radiance(Vector3f position, Vector3f direction, Random random, int depth = 0)
         {
             if (depth > maxDepth)
@@ -529,6 +584,7 @@ namespace RayTracerGUI
             return Vector3f.Zero;
         }
 
+        // Generate a random direction within a hemisphere
         private Vector3f RandomHemisphereDirection(Vector3f normal, Random random)
         {
             double u = random.NextDouble();
@@ -543,12 +599,14 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a class for the rendered image
     public class RenderedImage
     {
         private readonly int width;
         private readonly int height;
         private readonly Vector3f[,] pixels;
 
+        // Constructor to initialize the rendered image with dimensions
         public RenderedImage(int width, int height)
         {
             this.width = width;
@@ -556,20 +614,24 @@ namespace RayTracerGUI
             pixels = new Vector3f[width, height];
         }
 
+        // Properties for width, height, and aspect ratio
         public int Width => width;
         public int Height => height;
         public double AspectRatio => (double)width / height;
 
+        // Add a color to a specific pixel
         public void AddToPixel(int x, int y, Vector3f color)
         {
             pixels[x, y] = color;
         }
 
+        // Get the color of a specific pixel
         public Vector3f GetPixel(int x, int y)
         {
             return pixels[x, y];
         }
 
+        // Save the rendered image as a PPM file
         public void SaveAsPPM(string filename)
         {
             using (StreamWriter writer = new StreamWriter(filename))
@@ -590,8 +652,10 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a static helper class for parallel processing
     public static class ParallelHelper
     {
+        // Execute an action for each element in a 2D range
         public static void For2D(int startY, int endY, int startX, int endX, IAction2D action)
         {
             int batchHeight = (endY - startY) / Environment.ProcessorCount;
@@ -612,11 +676,13 @@ namespace RayTracerGUI
         }
     }
 
+    // Define an interface for a 2D action
     public interface IAction2D
     {
         void Invoke(int i, int j);
     }
 
+    // Define a class for the camera
     public class Camera
     {
         private readonly Vector3f viewPosition;
@@ -625,6 +691,7 @@ namespace RayTracerGUI
         private readonly Vector3f right;
         private readonly Vector3f up;
 
+        // Constructor to initialize the camera from an input buffer
         public Camera(TextReader inBuffer)
         {
             viewPosition = Scanf.Read(inBuffer);
@@ -644,8 +711,10 @@ namespace RayTracerGUI
             up = Vector3f.Unitize(Vector3f.Cross(viewDirection, right));
         }
 
+        // Property for the camera's eye point (position)
         public Vector3f EyePoint => viewPosition;
 
+        // Render a frame of the scene
         public RenderedImage Frame(Scene scene, RenderedImage renderedImage, Random random)
         {
             var rayTracer = new RayTracer(scene);
@@ -656,6 +725,7 @@ namespace RayTracerGUI
             return renderedImage;
         }
 
+        // Define a nested class to render a 2D image
         private class Render2d : IAction2D
         {
             private readonly RayTracer rayTracer;
@@ -670,6 +740,7 @@ namespace RayTracerGUI
             private readonly int total;
             private readonly int samplesPerPixel;
 
+            // Constructor to initialize the render action
             public Render2d(RayTracer r, RenderedImage i, Random ra, Vector3f up, Vector3f right, Vector3f dir, double ang, Vector3f pos, int samplesPerPixel = 4)
             {
                 rayTracer = r;
@@ -684,6 +755,7 @@ namespace RayTracerGUI
                 total = (renderedImage.Height - 1) * (renderedImage.Width - 1);
             }
 
+            // Execute the rendering action for each pixel
             public void Invoke(int x, int y)
             {
                 Vector3f color = Vector3f.Zero;
@@ -714,13 +786,16 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a static helper class for input parsing
     public static class Scanf
     {
+        // Read a line from a text reader
         public static string GetLine(TextReader reader)
         {
             return reader.ReadLine();
         }
 
+        // Read a vector from a text reader
         public static Vector3f Read(TextReader reader)
         {
             string[] parts = reader.ReadLine().Split();
@@ -728,6 +803,7 @@ namespace RayTracerGUI
         }
     }
 
+    // Define a partial class for the main form
     public partial class MainForm : Form
     {
         private Scene scene;
@@ -735,12 +811,14 @@ namespace RayTracerGUI
         private RenderedImage renderedImage;
         private RayTracer rayTracer;
 
+        // Constructor to initialize the main form and scene
         public MainForm()
         {
             InitializeComponent();
             InitializeScene();
         }
 
+        // Initialize the scene with a default setup
         private void InitializeScene()
         {
             int width = 800;
@@ -758,6 +836,7 @@ namespace RayTracerGUI
             rayTracer = new RayTracer(scene);
         }
 
+        // Event handler for the render button click event
         private async void RenderButton_Click(object sender, EventArgs e)
         {
             RenderButton.Enabled = false;
@@ -766,6 +845,7 @@ namespace RayTracerGUI
             DisplayRenderedImage();
         }
 
+        // Display the rendered image in a picture box
         private void DisplayRenderedImage()
         {
             Bitmap bitmap = new Bitmap(renderedImage.Width, renderedImage.Height);
